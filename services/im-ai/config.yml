@@ -1,0 +1,32 @@
+# Service-specific config (im-ai)
+http:
+  addr: ":8080"
+
+mysql:
+  dsn: "root:password@tcp(127.0.0.1:3306)/yuim?parseTime=true&loc=Local"
+  max_open_conns: 50
+  max_idle_conns: 25
+  conn_max_life: 30m
+  conn_max_idle: 5m
+
+redis:
+  addr: "127.0.0.1:6379"
+  password: ""
+  db: 0
+
+rocketmq:
+  name_server: "127.0.0.1:9876"
+  topic: "im_event"
+  tag: "*"
+  producer_group: "im-ai"
+
+idempotency:
+  ttl: 168h # 7d
+
+outbox:
+  tick: 1s
+  batch: 200
+
+sync:
+  default_limit: 50
+  max_limit: 500

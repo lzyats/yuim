@@ -1,0 +1,10 @@
+env: dev
+http:
+  addr: ":7001"
+redis:
+  addr: "127.0.0.1:6379"
+  password: ""
+  db: 0
+comet_addr: "127.0.0.1:7001"
+route_ttl: 60
+write_timeout: 5s

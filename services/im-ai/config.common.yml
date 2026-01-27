@@ -1,0 +1,9 @@
+# Common shared config example (can be reused by services)
+env: dev
+redis:
+  addr: "127.0.0.1:6379"
+  password: ""
+  db: 0
+rocketmq:
+  name_server: "127.0.0.1:9876"
+timeout: 3s

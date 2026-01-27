@@ -1,0 +1,34 @@
+env: dev
+
+metrics:
+  addr: ":2112"
+
+rocketmq:
+  name_server: "127.0.0.1:9876"
+  group: "im-job"
+  topic: "im_event"
+  tag: "*"
+
+redis:
+  addr: "127.0.0.1:6379"
+  password: ""
+  db: 0
+
+delivery:
+  op_timeout: 3s
+  offline_max_keep: 2000
+  vendor_queue_size: 4096
+  vendor_workers: 8
+
+comet:
+  push_path: "/internal/push"
+  push_batch_path: "/internal/push/batch"
+  timeout: 2s
+  max_batch: 200
+  flush_every: 5ms
+
+breaker:
+  enabled: true
+  threshold: 5
+  window: 10s
+  open_for: 5s
