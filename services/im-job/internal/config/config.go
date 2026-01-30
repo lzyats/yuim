@@ -23,10 +23,24 @@ type Config struct {
 		Tag        string `yaml:"tag,omitempty"`
 	} `yaml:"rocketmq"`
 
+	MySQL struct {
+		DSN          string        `yaml:"dsn"`
+		MaxOpenConns int           `yaml:"max_open_conns"`
+		MaxIdleConns int           `yaml:"max_idle_conns"`
+		ConnMaxLife  time.Duration `yaml:"conn_max_life"`
+		ConnMaxIdle  time.Duration `yaml:"conn_max_idle"`
+	} `yaml:"mysql"`
+
+	Group struct {
+		Enabled     bool          `yaml:"enabled"`
+		MemberLimit int           `yaml:"member_limit"`
+		CacheTTL    time.Duration `yaml:"cache_ttl"`
+	} `yaml:"group"`
+
 	Redis struct {
 		Addr     string `yaml:"addr"`
 		Password string `yaml:"password"`
-		DB       int    `yaml:"db"`
+		Database int    `yaml:"database"`
 	} `yaml:"redis"`
 
 	Delivery struct {
@@ -52,7 +66,8 @@ type Config struct {
 	} `yaml:"breaker"`
 
 	Dedupe struct {
-		TTL time.Duration `yaml:"ttl"` // msg_id 去重 TTL
+		Enabled bool          `yaml:"enabled"` // 是否开启 msg_id 去重
+		TTL     time.Duration `yaml:"ttl"`     // msg_id 去重 TTL
 	} `yaml:"dedupe"`
 }
 
@@ -117,6 +132,19 @@ func Load(pathList string) (*Config, error) {
 	}
 	if c.Breaker.OpenFor == 0 {
 		c.Breaker.OpenFor = 5 * time.Second
+	}
+	if !c.Group.Enabled {
+		c.Group.Enabled = true
+	}
+	if c.Group.MemberLimit <= 0 {
+		c.Group.MemberLimit = 5000
+	}
+	if c.Group.CacheTTL == 0 {
+		c.Group.CacheTTL = 30 * time.Second
+	}
+
+	if !c.Dedupe.Enabled {
+		c.Dedupe.Enabled = true
 	}
 	if c.Dedupe.TTL == 0 {
 		c.Dedupe.TTL = 7 * 24 * time.Hour

@@ -8,6 +8,10 @@ import (
 
 type Record struct {
 	ID          int64
+	Event       string
+	MsgID       int64
+	ConvID      string
+	SyncID      int64
 	Topic       string
 	Tag         string
 	PayloadJSON string
@@ -23,19 +27,37 @@ type Repo struct {
 
 func NewRepo(db *sql.DB) *Repo { return &Repo{db: db} }
 
-// EnqueueTx inserts an outbox record and returns its auto-increment id.
-func (r *Repo) EnqueueTx(ctx context.Context, tx *sql.Tx, topic, tag, payloadJSON string) (int64, error) {
+// EnqueueTx is idempotent by UNIQUE(event, msg_id). It returns outbox_id.
+func (r *Repo) EnqueueTx(ctx context.Context, tx *sql.Tx, event string, msgID int64, convID string, syncID int64, topic, tag, payloadJSON string) (int64, error) {
 	if tag == "" {
 		tag = "*"
 	}
+
 	res, err := tx.ExecContext(ctx, `
-INSERT INTO im_outbox (topic, tag, payload_json, status, retry_count, next_retry_at)
-VALUES (?, ?, ?, 0, 0, NOW())
-`, topic, tag, payloadJSON)
+INSERT INTO im_outbox (event, msg_id, conv_id, sync_id, topic, tag, payload_json, status, retry_count, next_retry_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, NOW())
+ON DUPLICATE KEY UPDATE
+  payload_json=VALUES(payload_json),
+  topic=VALUES(topic),
+  tag=VALUES(tag),
+  next_retry_at=LEAST(next_retry_at, NOW()),
+  id=LAST_INSERT_ID(id)
+`, event, msgID, convID, syncID, topic, tag, payloadJSON)
 	if err != nil {
 		return 0, err
 	}
-	return res.LastInsertId()
+	id, err := res.LastInsertId()
+	if err != nil || id == 0 {
+		var qid int64
+		if e := tx.QueryRowContext(ctx, `SELECT id FROM im_outbox WHERE event=? AND msg_id=? LIMIT 1`, event, msgID).Scan(&qid); e != nil {
+			if err != nil {
+				return 0, err
+			}
+			return 0, e
+		}
+		return qid, nil
+	}
+	return id, nil
 }
 
 func (r *Repo) FetchDue(ctx context.Context, limit int) ([]Record, error) {
@@ -43,7 +65,7 @@ func (r *Repo) FetchDue(ctx context.Context, limit int) ([]Record, error) {
 		limit = 200
 	}
 	rows, err := r.db.QueryContext(ctx, `
-SELECT id, topic, tag, payload_json, status, retry_count, next_retry_at, last_error
+SELECT id, event, msg_id, conv_id, sync_id, topic, tag, payload_json, status, retry_count, next_retry_at, last_error
 FROM im_outbox
 WHERE status = 0 AND next_retry_at <= NOW()
 ORDER BY id ASC
@@ -57,7 +79,8 @@ LIMIT ?
 	var out []Record
 	for rows.Next() {
 		var rec Record
-		if err := rows.Scan(&rec.ID, &rec.Topic, &rec.Tag, &rec.PayloadJSON, &rec.Status, &rec.RetryCount, &rec.NextRetryAt, &rec.LastError); err != nil {
+		if err := rows.Scan(&rec.ID, &rec.Event, &rec.MsgID, &rec.ConvID, &rec.SyncID, &rec.Topic, &rec.Tag, &rec.PayloadJSON,
+			&rec.Status, &rec.RetryCount, &rec.NextRetryAt, &rec.LastError); err != nil {
 			return nil, err
 		}
 		out = append(out, rec)

@@ -15,10 +15,10 @@ type ImEvent struct {
 }
 
 type Message struct {
-	MsgID       int64              `json:"msg_id"`
-	ClientMsgID string             `json:"client_msg_id,omitempty"`
-	MsgType     string             `json:"msg_type"`
-	Seq         int64              `json:"seq"`
-	Content     map[string]any      `json:"content,omitempty"`
-	Extra       map[string]string   `json:"extra,omitempty"`
+	MsgID       int64             `json:"msg_id"`
+	ClientMsgID string            `json:"client_msg_id,omitempty"`
+	MsgType     string            `json:"msg_type"`
+	Seq         int64             `json:"seq"`
+	Content     map[string]any    `json:"content,omitempty"`
+	Extra       map[string]string `json:"extra,omitempty"`
 }

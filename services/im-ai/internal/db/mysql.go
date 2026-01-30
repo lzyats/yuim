@@ -13,12 +13,12 @@ type MySQL struct {
 }
 
 type Options struct {
-	DSN            string
-	MaxOpenConns   int
-	MaxIdleConns   int
-	ConnMaxLife    time.Duration
-	ConnMaxIdle    time.Duration
-	PingTimeout    time.Duration
+	DSN          string
+	MaxOpenConns int
+	MaxIdleConns int
+	ConnMaxLife  time.Duration
+	ConnMaxIdle  time.Duration
+	PingTimeout  time.Duration
 }
 
 func Open(opt Options) (*MySQL, error) {

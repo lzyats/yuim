@@ -27,7 +27,7 @@ type Config struct {
 	Redis struct {
 		Addr     string `yaml:"addr"`
 		Password string `yaml:"password"`
-		DB       int    `yaml:"db"`
+		Database int    `yaml:"database"`
 	} `yaml:"redis"`
 
 	RocketMQ struct {
@@ -52,6 +52,23 @@ type Config struct {
 		DefaultLimit int `yaml:"default_limit"`
 		MaxLimit     int `yaml:"max_limit"`
 	} `yaml:"sync"`
+
+	Auth struct {
+		Enabled bool   `yaml:"enabled"`
+		Mode    string `yaml:"mode"` // default_protect | default_public
+
+		Token struct {
+			Header       string `yaml:"header"`
+			BearerPrefix string `yaml:"bearer_prefix"`
+			QueryKey     string `yaml:"query_key"`
+			RedisPrefix  string `yaml:"redis_prefix"`
+			TTLDays      int    `yaml:"ttl_days"`
+			Secret       string `yaml:"secret"`
+		} `yaml:"token"`
+
+		PublicPaths    []string `yaml:"public_paths"`
+		ProtectedPaths []string `yaml:"protected_paths"`
+	} `yaml:"auth"`
 }
 
 // Load supports comma-separated config files: "-c common.yml,im-ai.yml".
@@ -110,6 +127,29 @@ func Load(pathList string) (*Config, error) {
 	}
 	if c.Sync.MaxLimit <= 0 {
 		c.Sync.MaxLimit = 500
+	}
+
+	// auth defaults
+	if c.Auth.Mode == "" {
+		c.Auth.Mode = "default_protect"
+	}
+	if c.Auth.Token.Header == "" {
+		c.Auth.Token.Header = "Authorization"
+	}
+	if c.Auth.Token.BearerPrefix == "" {
+		c.Auth.Token.BearerPrefix = "Bearer "
+	}
+	if c.Auth.Token.QueryKey == "" {
+		c.Auth.Token.QueryKey = "token"
+	}
+	if c.Auth.Token.RedisPrefix == "" {
+		c.Auth.Token.RedisPrefix = "app:token:"
+	}
+	if c.Auth.Token.TTLDays == 0 {
+		c.Auth.Token.TTLDays = 30
+	}
+	if c.Auth.PublicPaths == nil {
+		c.Auth.PublicPaths = []string{"/healthz"}
 	}
 	return &c, nil
 }

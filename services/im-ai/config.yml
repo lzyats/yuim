@@ -12,8 +12,7 @@ mysql:
 redis:
   addr: "127.0.0.1:6379"
   password: ""
-  db: 0
-
+  database: 0
 rocketmq:
   name_server: "127.0.0.1:9876"
   topic: "im_event"
@@ -30,3 +29,18 @@ outbox:
 sync:
   default_limit: 50
   max_limit: 500
+
+auth:
+  enabled: true
+  mode: default_protect
+  token:
+    header: Authorization
+    bearer_prefix: "Bearer "
+    query_key: token
+    redis_prefix: "app:token:"
+    ttl_days: 30
+    # IMPORTANT: must match Java platform.secret (PlatformConfig.SECRET)
+    secret: "3c17c816846c231c"
+  public_paths:
+    - /healthz
+    - /v1/auth/

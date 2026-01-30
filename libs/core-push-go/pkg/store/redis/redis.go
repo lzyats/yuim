@@ -15,6 +15,10 @@ type Store struct {
 	cli *redis.Client
 }
 
+// Client exposes the underlying redis client for advanced use-cases.
+// It is intentionally read-only (callers should not Close it).
+func (s *Store) Client() *redis.Client { return s.cli }
+
 func New(cfg push.RedisSettings) (*Store, error) {
 	if cfg.Host == "" {
 		return nil, fmt.Errorf("redis: missing host")
@@ -92,8 +96,6 @@ func DecodeMessage(payload string) (push.Message, error) {
 	}
 	return m, nil
 }
-
-
 
 /*
 DeliveryStore implementation (route/offline/idem)
@@ -213,7 +215,6 @@ func (s *Store) SetIdem(ctx context.Context, fromUID int64, clientMsgID string, 
 	}
 	return s.cli.Set(ctx, s.idemKey(fromUID, clientMsgID), fmt.Sprintf("%d", msgID), time.Duration(ttlSeconds)*time.Second).Err()
 }
-
 
 // DedupeMsg returns true if msgID is seen for the first time within ttlSeconds.
 // It uses SET NX to provide consumer-side idempotency (dedup by msg_id).

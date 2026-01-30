@@ -19,12 +19,23 @@ type Config struct {
 	Redis struct {
 		Addr     string `yaml:"addr"`
 		Password string `yaml:"password"`
-		DB       int    `yaml:"db"`
+		Database int    `yaml:"database"`
 	} `yaml:"redis"`
 
-	CometAddr     string        `yaml:"comet_addr"` // value written to route, e.g. "10.0.0.12:7001"
-	RouteTTL      int64         `yaml:"route_ttl"`  // seconds
-	WriteTimeout  time.Duration `yaml:"write_timeout"`
+	CometAddr    string        `yaml:"comet_addr"` // value written to route, e.g. "10.0.0.12:7001"
+	RouteTTL     int64         `yaml:"route_ttl"`  // seconds
+	WriteTimeout time.Duration `yaml:"write_timeout"`
+
+	Auth struct {
+		Enabled bool `yaml:"enabled"`
+		Token   struct {
+			Header       string `yaml:"header"`
+			BearerPrefix string `yaml:"bearer_prefix"`
+			QueryKey     string `yaml:"query_key"`
+			RedisPrefix  string `yaml:"redis_prefix"`
+			Secret       string `yaml:"secret"`
+		} `yaml:"token"`
+	} `yaml:"auth"`
 }
 
 // Load supports comma-separated config files: "-c common.yml,im-push.yml"
@@ -59,6 +70,20 @@ func Load(pathList string) (*Config, error) {
 	}
 	if c.CometAddr == "" {
 		c.CometAddr = "127.0.0.1" + c.HTTP.Addr
+	}
+	// auth defaults (compatible with Java token + redis session)
+	if c.Auth.Token.Header == "" {
+		c.Auth.Token.Header = "Authorization"
+	}
+	if c.Auth.Token.BearerPrefix == "" {
+		c.Auth.Token.BearerPrefix = "Bearer "
+	}
+	if c.Auth.Token.QueryKey == "" {
+		c.Auth.Token.QueryKey = "token"
+	}
+	if c.Auth.Token.RedisPrefix == "" {
+		// Java example: token:app:<token>
+		c.Auth.Token.RedisPrefix = "token:app:"
 	}
 	return &c, nil
 }

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"net/http"
+	"strings"
 	"strconv"
 	"time"
 
@@ -16,6 +17,7 @@ import (
 	redisstore "github.com/lzyats/core-push-go/pkg/store/redis"
 
 	"yuim/services/im-push/internal/config"
+	pushauth "yuim/services/im-push/internal/auth"
 	"yuim/services/im-push/internal/hub"
 	"yuim/services/im-push/internal/metrics"
 )
@@ -61,11 +63,37 @@ func main() {
 
 	// WS: /ws?uid=1001 (demo). 实际要用 token 鉴权。
 	mux.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
-		uidStr := r.URL.Query().Get("uid")
-		uid, _ := strconv.ParseInt(uidStr, 10, 64)
-		if uid <= 0 {
-			http.Error(w, "missing uid", 400)
-			return
+		uid := int64(0)
+		// token auth (Java-compatible): decrypt token -> uid, then validate session in Redis.
+		if cfg.Auth.Enabled {
+			tok := pushauth.ExtractToken(r, cfg.Auth.Token.Header, cfg.Auth.Token.BearerPrefix, cfg.Auth.Token.QueryKey)
+			if tok == "" {
+				http.Error(w, "missing token", http.StatusUnauthorized)
+				return
+			}
+			payload, err := pushauth.ParseToken(tok, cfg.Auth.Token.Secret)
+			if err != nil || payload.UserID <= 0 {
+				http.Error(w, "invalid token", http.StatusUnauthorized)
+				return
+			}
+			ok, err := pushauth.ValidateSession(r.Context(), store.Client(), cfg.Auth.Token.RedisPrefix, tok)
+			if err != nil {
+				http.Error(w, "auth error", http.StatusInternalServerError)
+				return
+			}
+			if !ok {
+				http.Error(w, "token expired", http.StatusUnauthorized)
+				return
+			}
+			uid = payload.UserID
+		} else {
+			// fallback: demo uid query (only when auth disabled)
+			uidStr := r.URL.Query().Get("uid")
+			uid, _ = strconv.ParseInt(strings.TrimSpace(uidStr), 10, 64)
+			if uid <= 0 {
+				http.Error(w, "missing uid", 400)
+				return
+			}
 		}
 
 		ws, err := upgrader.Upgrade(w, r, nil)
@@ -204,6 +232,6 @@ func parseRedisSettings(cfg *config.Config) push.RedisSettings {
 		Host:     host,
 		Port:     port,
 		Password: cfg.Redis.Password,
-		Database: cfg.Redis.DB,
+		Database: cfg.Redis.Database,
 	}
 }

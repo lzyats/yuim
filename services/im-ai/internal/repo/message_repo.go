@@ -4,22 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"time"
 )
-
-type ChatMsg struct {
-	MsgID       int64
-	SyncID      int64
-	UserID      int64
-	ReceiveID   int64
-	GroupID     sql.NullInt64
-	TalkType    string
-	MsgType     string
-	Content     string
-	CreateTime  time.Time
-	ConvID      string
-	ClientMsgID string
-}
 
 type ChatMsgRepo struct {
 	db *sql.DB
@@ -29,7 +14,7 @@ func NewChatMsgRepo(db *sql.DB) *ChatMsgRepo { return &ChatMsgRepo{db: db} }
 
 func (r *ChatMsgRepo) InsertTx(ctx context.Context, tx *sql.Tx, m *ChatMsg) error {
 	_, err := tx.ExecContext(ctx, `
-INSERT INTO chat_msg
+INSERT INTO im_msg
 (msg_id, sync_id, user_id, receive_id, group_id, talk_type, msg_type, content, create_time, conv_id, client_msg_id)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?)
 `, m.MsgID, m.SyncID, m.UserID, m.ReceiveID, m.GroupID, m.TalkType, m.MsgType, m.Content, m.ConvID, m.ClientMsgID)
@@ -45,7 +30,7 @@ func (r *ChatMsgRepo) ListByConvAfterSync(ctx context.Context, uid int64, convID
 	}
 	rows, err := r.db.QueryContext(ctx, `
 SELECT msg_id, sync_id, user_id, receive_id, group_id, talk_type, msg_type, content, create_time, conv_id, client_msg_id
-FROM chat_msg
+FROM im_msg
 WHERE conv_id = ? AND sync_id > ? AND (user_id = ? OR receive_id = ?)
 ORDER BY sync_id ASC
 LIMIT ?

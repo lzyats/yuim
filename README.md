@@ -47,3 +47,18 @@ make build
 
 ## 配置文件通用化建议
 - 采用 `-c common.yml,service.yml` 叠加加载，避免重复与遗漏（已在 im-ai 实现）。
+
+
+## Outbox Worker 独立运行
+im-ai 支持仅运行 Outbox 补偿发布（不启动 HTTP）：
+```bash
+./bin/im-ai -c configs/common.yml,configs/im-ai.yml --outbox-only
+```
+
+
+## Redis 配置字段
+统一使用 `redis.database`（不再使用 `redis.db`）。
+
+
+## 群聊 fanout
+im-job 支持根据 conv_id=g:<group_id> 从 MySQL 展开群成员（表：im_group_member）。

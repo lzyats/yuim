@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -27,6 +29,7 @@ import (
 	"yuim/services/im-job/internal/comet"
 	"yuim/services/im-job/internal/config"
 	"yuim/services/im-job/internal/metrics"
+	"yuim/services/im-job/internal/repo"
 )
 
 // Packet is the payload sent to Comet (can be protobuf later).
@@ -212,7 +215,7 @@ func parseRedisSettings(cfg *config.Config) push.RedisSettings {
 		Host:     host,
 		Port:     port,
 		Password: cfg.Redis.Password,
-		Database: cfg.Redis.DB,
+		Database: cfg.Redis.Database,
 	}
 }
 
@@ -462,4 +465,44 @@ func (b *batcher) senderRawPost(ctx context.Context, cometAddr, path string, bod
 		return fmt.Errorf("comet push status=%d", resp.StatusCode)
 	}
 	return nil
+}
+
+func isGroupConv(convID string) (int64, bool) {
+	if strings.HasPrefix(convID, "g:") {
+		gid, err := strconv.ParseInt(strings.TrimPrefix(convID, "g:"), 10, 64)
+		if err == nil && gid > 0 {
+			return gid, true
+		}
+	}
+	return 0, false
+}
+
+type groupCache interface {
+	Get(int64) ([]int64, bool)
+	Set(int64, []int64)
+}
+
+func expandGroupRecipients(ctx context.Context, groupID int64, fromUID int64, limit int, gr *repo.GroupRepo, c groupCache) ([]int64, error) {
+	if gr == nil || c == nil {
+		return nil, nil
+	}
+	if uids, ok := c.Get(groupID); ok {
+		return filterOut(uids, fromUID), nil
+	}
+	uids, err := gr.ListActiveMemberUIDs(ctx, groupID, limit)
+	if err != nil {
+		return nil, err
+	}
+	c.Set(groupID, uids)
+	return filterOut(uids, fromUID), nil
+}
+
+func filterOut(uids []int64, fromUID int64) []int64 {
+	out := make([]int64, 0, len(uids))
+	for _, u := range uids {
+		if u > 0 && u != fromUID {
+			out = append(out, u)
+		}
+	}
+	return out
 }

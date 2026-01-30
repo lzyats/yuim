@@ -13,8 +13,8 @@ import (
 // HTTPSender delivers packets to comet via HTTP.
 // cometAddr is taken from Redis route value, e.g. "10.0.0.12:7001" or "http://10.0.0.12:7001".
 type HTTPSender struct {
-	Client      *http.Client
-	PushPath    string // single push endpoint, e.g. "/internal/push"
+	Client        *http.Client
+	PushPath      string // single push endpoint, e.g. "/internal/push"
 	PushBatchPath string // batch push endpoint, e.g. "/internal/push/batch"
 }
 

@@ -7,8 +7,8 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/lzyats/core-push-go/pkg/event"
 	"github.com/lzyats/core-push-go/pkg/delivery"
+	"github.com/lzyats/core-push-go/pkg/event"
 )
 
 type Worker struct {
@@ -16,9 +16,9 @@ type Worker struct {
 	prod delivery.Producer
 	log  *zap.Logger
 
-	tick time.Duration
+	tick  time.Duration
 	batch int
-	stop chan struct{}
+	stop  chan struct{}
 }
 
 type Options struct {
